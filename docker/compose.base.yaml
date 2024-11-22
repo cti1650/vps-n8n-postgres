@@ -1,0 +1,43 @@
+services:
+  n8n:
+    container_name: n8n
+    restart: always
+    image: docker.n8n.io/n8nio/n8n:1.66.0
+    environment:
+      - GENERIC_TIMEZONE=Asia/Tokyo
+      - N8N_SECURE_COOKIE=FALSE
+    networks:
+      - default
+    volumes:
+      - ../data:/home/node/.n8n
+
+  n8n_postgres:
+    image: postgres:13
+    restart: always
+    volumes:
+      - n8n_postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - POSTGRES_DB=${POSTGRES_DB:-n8n_db}
+    networks:
+      - default
+
+  n8n_pgweb:
+    image: sosedoff/pgweb
+    restart: always
+    environment:
+      PGWEB_DATABASE_URL: postgres://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@n8n_postgres/${POSTGRES_DB:-n8n_db}?sslmode=disable
+    depends_on:
+      - n8n_postgres
+    networks:
+      - default
+
+networks:
+  default:
+    driver: bridge
+
+volumes:
+  n8n_postgres_data:
+    driver: local
